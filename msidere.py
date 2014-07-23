@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
             #on lis les paquets
             while free_block > 0:
-                s = struct.Struct(">hhhhh")
+                s = struct.Struct("<hhhhh")
                 record = fichier.read(10)
                 nbytes, nech, val0, offset, nbits = s.unpack(record)
                 logging.info("taille du paquet: %s octet(s)", nbytes)
