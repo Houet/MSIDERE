@@ -6,21 +6,19 @@ import struct
 from binascii import hexlify, unhexlify
 from struct import pack, unpack
 
-with open("masseData.dat", "rb") as fichier:
-	size_block = unhexlify(fichier.read(4))
-	size_block=hexlify(pack('<h', *unpack('>h', size_block)))
 
-	fichier.read(1)
+with open("sismo.dat", "rb") as fichier:
 
-	size_paquet = unhexlify(fichier.read(4))
-	size_paquet=hexlify(pack('<h', *unpack('>h', size_paquet)))
+	try:
+		s = struct.Struct(">6h")
+		record = fichier.read(12)
+		paquet = s.unpack(record)
+		record = s.pack(*paquet)
+	except IOError:
+		pass
 
-	texte = fichier.read(int(size_paquet, 16)*2)
+with open("dest.dat", "wb") as dest:
+	dest.write(record)
 
 
-
-
-print 'taille du block', int(size_block, 16), 'octet(s)'
-print 'taille du paquet', int(size_paquet, 16), 'octet(s)'
-
-print 'donnees du premier paquet :\n' , texte
+print 'finis !'
