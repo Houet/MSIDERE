@@ -60,11 +60,12 @@ if __name__ == "__main__":
 
             #on lis les paquets
             while free_block > 0:
-                s = struct.Struct("<hhhhh")
+                s = struct.Struct(">hhhhh")
                 record = fichier.read(10)
                 nbytes, nech, val0, offset, nbits = s.unpack(record)
                 logging.info("taille du paquet: %s octet(s)", nbytes)
                 record =  fichier.read(nbytes - 10)
+
 
                 free_block = 0
 
@@ -76,7 +77,7 @@ if __name__ == "__main__":
       dest.write(record)
 
     #os.system("vi output_error.txt")
-    os.system("od -x dest.dat")
+    #os.system("od -x dest.dat")
 
 
 
