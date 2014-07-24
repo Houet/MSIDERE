@@ -15,8 +15,11 @@ def function_logging(loglevel):
 
     numeric_level = getattr(logging, loglevel.upper(), None)
     form = '%(levelname)s :: %(asctime)s :: %(message)s'
-    logging.basicConfig(filename="output_error.txt", level=numeric_level, format=form)
+    logging.basicConfig(level=numeric_level, format=form)
     return
+
+def decompression():
+    """ vide """
 
 
 if __name__ == "__main__":
@@ -25,7 +28,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="decompression MSIDERE")
 
     parser.add_argument("-l", "--loglevel", help="change the logging level", 
-        default="info", choices=['debug', 'info', 'warning', 'error'])
+        default="warning", choices=['debug', 'info', 'warning', 'error'])
     args = parser.parse_args()
 
 
@@ -64,19 +67,33 @@ if __name__ == "__main__":
                 record = fichier.read(10)
                 nbytes, nech, val0, offset, nbits = s.unpack(record)
                 logging.info("taille du paquet: %s octet(s)", nbytes)
-                record =  fichier.read(nbytes - 10)
+
+                #decompression des donnees
+
+                data = fichier.read(nbytes - 10)
 
 
-                free_block = 0
+                #donnees en binaire
+                data_binaire = bin(int(hexlify(data),16))[2:]
+                size_data = range(len(data_binaire)/nbits)
+
+                data_undelta = ['0'*(16 - nbits) + data_binaire[i*nbits:(i + 1)*nbits] for i in size_data]
+                data_undelta = ''.join(data_undelta)
+                
+                with open("dest.dat", "ab") as dest:
+                    dest.write("\n\n ***** NOUVEAU PAQUET ***** \n\n")
+                    dest.write("donnees non decompressee en binaire\n\n")
+                    dest.write(data_binaire)
+                    dest.write("\n\ndonnees decompressee en binaire\n\n")
+                    dest.write(data_undelta)
+
+                #free_block = 0
+                free_block -= nbytes
 
         except IOError:
             pass
 
-
-    with open("dest.dat", "wb") as dest:
-      dest.write(record)
-
-    #os.system("vi output_error.txt")
+    os.system("vi dest.dat")
     #os.system("od -x dest.dat")
 
 
