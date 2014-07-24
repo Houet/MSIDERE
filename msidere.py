@@ -4,8 +4,8 @@
 import os
 import logging
 import binascii
-import struct
 from binascii import hexlify, unhexlify
+import struct
 from struct import pack, unpack
 
 
@@ -57,15 +57,13 @@ if __name__ == "__main__":
 
         try:
             #on lis la taille du block
-            size_block = pack(">h", *unpack("<h", fichier.read(2)))
-            free_block = int(hexlify(size_block), 16)
-            logging.info("taille du block: %s octet(s)", free_block)
+            size_block, = unpack("h", fichier.read(2))
+            logging.info("taille du block: %s octet(s)", size_block)
 
             #on lis les paquets
-            while free_block > 0:
-                s = struct.Struct("<hhhhh")
-                record = fichier.read(10)
-                nbytes, nech, val0, offset, nbits = s.unpack(record)
+            while size_block > 0:
+                s = struct.Struct("5h")
+                nbytes, nech, val0, offset, nbits = s.unpack(fichier.read(10))
                 logging.info("taille du paquet: %s octet(s)", nbytes)
 
                 #decompression des donnees
@@ -77,23 +75,35 @@ if __name__ == "__main__":
                 data_binaire = bin(int(hexlify(data),16))[2:]
                 size_data = range(len(data_binaire)/nbits)
 
-                data_undelta = ['0'*(16 - nbits) + data_binaire[i*nbits:(i + 1)*nbits] for i in size_data]
+
+                data_undelta = ['0'*(16-nbits) + data_binaire[i*nbits:(i + 1)*nbits] for i in size_data]
                 data_undelta = ''.join(data_undelta)
                 
-                with open("dest.dat", "ab") as dest:
+                
+
+                with open("dest.dat", "wb") as dest:
                     dest.write("\n\n ***** NOUVEAU PAQUET ***** \n\n")
                     dest.write("donnees non decompressee en binaire\n\n")
                     dest.write(data_binaire)
                     dest.write("\n\ndonnees decompressee en binaire\n\n")
                     dest.write(data_undelta)
 
-                #free_block = 0
-                free_block -= nbytes
+
+                #reencodage
+                data_out = hex(int(data_undelta,2))[2:]
+                data_out = unhexlify(data_out[:-1])
+                #print data_out
+                with open("decompress.dat", "wb") as sismo:
+                    sismo.write(data_out)
+
+
+                size_block = 0
+                #size_block -= nbytes
 
         except IOError:
             pass
 
-    os.system("vi dest.dat")
+    #os.system("vi dest.dat")
     #os.system("od -x dest.dat")
 
 
