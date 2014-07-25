@@ -1,0 +1,4 @@
+argparse==1.2.1
+korg==0.0.3
+plot==0.0.2
+wsgiref==0.1.2
