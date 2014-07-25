@@ -65,48 +65,32 @@ if __name__ == "__main__":
                 s = struct.Struct("5h")
                 nbytes, nech, val0, offset, nbits = s.unpack(fichier.read(10))
                 logging.info("taille du paquet: %s octet(s)", nbytes)
+                logging.info("nombre d'echantillons: %s ", nech)
+                logging.info("codes sur : %s bits", nbits)
 
                 #decompression des donnees
-
                 data = fichier.read(nbytes - 10)
-
 
                 #donnees en binaire
                 data_binaire = bin(int(hexlify(data),16))[2:]
                 size_data = range(len(data_binaire)/nbits)
 
-
                 data_undelta = [data_binaire[i*nbits:(i + 1)*nbits] for i in size_data]
                 data_undelta = map(lambda x : int(x,2) - offset, data_undelta)
-                #data_undelta = ''.join(data_undelta)
                 data_undelta.insert(0,val0)
                 
-
-                # with open("dest.dat", "wb") as dest:
-                #     dest.write("\n\n ***** NOUVEAU PAQUET ***** \n\n")
-                #     dest.write("donnees non decompressee en binaire\n\n")
-                #     dest.write(data_binaire)
-                #     dest.write("\n\ndonnees decompressee en binaire\n\n")
-                #     dest.write(data_undelta)
-
-
                 #reencodage
-                data_out = [pack('h', data_undelta[i]) for i in data_undelta]
+                data_out = [pack('h', i) for i in data_undelta]
                 data_out = ''.join(data_out)
 
                 #print data_out
-                with open("decompress.dat", "wb") as sismo:
-                    sismo.write(data_out)
+                with open("decompress.dat", "ab") as decompress:
+                    decompress.write(data_out)
 
-
-                size_block = 0
-                #size_block -= nbytes
+                size_block -= nbytes
 
         except IOError:
             pass
-
-    #os.system("vi dest.dat")
-    #os.system("od -x dest.dat")
 
 
 
@@ -116,3 +100,12 @@ if __name__ == "__main__":
 # pour l'instant on ne lis que le premier paquet pour se simplifier la tache
 # on a aussi reutiliser la meme structure que celle utilise en C precedemment 
 # par mr Frogneux
+
+
+# edit : 
+# on lis tous les paquets du block maintenant, qu'on convertis en binaire
+# pour pouvoir separer les bits lorsque nbits car nbits est souvent pas 
+# multiple d'un octet
+# on pack ensuite dans le fichier decompress.dat apres avoir 
+# retranche la composante continue et ajoute la premiere valeur val0
+# pour l'instant on ne travaille que sur un seul block 
