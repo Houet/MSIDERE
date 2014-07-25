@@ -21,6 +21,40 @@ def function_logging(loglevel):
 def decompression():
     """ vide """
 
+    #on lis la taille du block
+    size_block, = unpack("h", fichier.read(2))
+    logging.info("taille du block: %s octet(s)", size_block)
+
+    #on lis les paquets
+    while size_block > 0:
+        s = struct.Struct("5h")
+        nbytes, nech, val0, offset, nbits = s.unpack(fichier.read(10))
+        logging.info("taille du paquet: %s octet(s)", nbytes)
+        logging.info("nombre d'echantillons: %s ", nech)
+        logging.info("codes sur : %s bits", nbits)
+
+        #decompression des donnees
+        data = fichier.read(nbytes - 10)
+
+        if nbits !=0:
+            #donnees en binaire
+            data_binaire = bin(int(hexlify(data),16))[2:]
+            size_data = range(len(data_binaire)/nbits)
+
+            data_undelta = [data_binaire[i*nbits:(i + 1)*nbits] for i in size_data]
+            data_undelta = map(lambda x : int(x,2) - offset, data_undelta)
+            data_undelta.insert(0,val0)
+            
+            #reencodage
+            data_out = [pack('h', i) for i in data_undelta]
+            data_out = ''.join(data_out)
+
+            #print data_out
+            with open("decompress.dat", "ab") as decompress:
+                decompress.write(data_out)
+
+        size_block -= nbytes
+
 
 if __name__ == "__main__":
 
@@ -56,38 +90,8 @@ if __name__ == "__main__":
         #####################################################################
 
         try:
-            #on lis la taille du block
-            size_block, = unpack("h", fichier.read(2))
-            logging.info("taille du block: %s octet(s)", size_block)
-
-            #on lis les paquets
-            while size_block > 0:
-                s = struct.Struct("5h")
-                nbytes, nech, val0, offset, nbits = s.unpack(fichier.read(10))
-                logging.info("taille du paquet: %s octet(s)", nbytes)
-                logging.info("nombre d'echantillons: %s ", nech)
-                logging.info("codes sur : %s bits", nbits)
-
-                #decompression des donnees
-                data = fichier.read(nbytes - 10)
-
-                #donnees en binaire
-                data_binaire = bin(int(hexlify(data),16))[2:]
-                size_data = range(len(data_binaire)/nbits)
-
-                data_undelta = [data_binaire[i*nbits:(i + 1)*nbits] for i in size_data]
-                data_undelta = map(lambda x : int(x,2) - offset, data_undelta)
-                data_undelta.insert(0,val0)
-                
-                #reencodage
-                data_out = [pack('h', i) for i in data_undelta]
-                data_out = ''.join(data_out)
-
-                #print data_out
-                with open("decompress.dat", "ab") as decompress:
-                    decompress.write(data_out)
-
-                size_block -= nbytes
+        	for i in range(100000):
+            	decompression()
 
         except IOError:
             pass
