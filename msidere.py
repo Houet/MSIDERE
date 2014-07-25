@@ -76,22 +76,24 @@ if __name__ == "__main__":
                 size_data = range(len(data_binaire)/nbits)
 
 
-                data_undelta = ['0'*(16-nbits) + data_binaire[i*nbits:(i + 1)*nbits] for i in size_data]
-                data_undelta = ''.join(data_undelta)
-                
+                data_undelta = [data_binaire[i*nbits:(i + 1)*nbits] for i in size_data]
+                data_undelta = map(lambda x : int(x,2) - offset, data_undelta)
+                #data_undelta = ''.join(data_undelta)
+                data_undelta.insert(0,val0)
                 
 
-                with open("dest.dat", "wb") as dest:
-                    dest.write("\n\n ***** NOUVEAU PAQUET ***** \n\n")
-                    dest.write("donnees non decompressee en binaire\n\n")
-                    dest.write(data_binaire)
-                    dest.write("\n\ndonnees decompressee en binaire\n\n")
-                    dest.write(data_undelta)
+                # with open("dest.dat", "wb") as dest:
+                #     dest.write("\n\n ***** NOUVEAU PAQUET ***** \n\n")
+                #     dest.write("donnees non decompressee en binaire\n\n")
+                #     dest.write(data_binaire)
+                #     dest.write("\n\ndonnees decompressee en binaire\n\n")
+                #     dest.write(data_undelta)
 
 
                 #reencodage
-                data_out = hex(int(data_undelta,2))[2:]
-                data_out = unhexlify(data_out[:-1])
+                data_out = [pack('h', data_undelta[i]) for i in data_undelta]
+                data_out = ''.join(data_out)
+
                 #print data_out
                 with open("decompress.dat", "wb") as sismo:
                     sismo.write(data_out)
