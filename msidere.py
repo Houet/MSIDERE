@@ -41,10 +41,9 @@ def decompression(fichier, iterateur):
             if nbits != 0:
                 # donnees en binaire
                 data_binaire = bin(int(hexlify(data), 16))[2:]
-                size_data = list(range(nech))
 
                 data_undelta = [data_binaire[i * nbits:(i + 1) * nbits]
-                                for i in size_data]
+                                for i in range(nech)]
                 logging.debug(len(data_undelta))
                 data_undelta = [int(x, 2) - offset for x in data_undelta]
                 logging.debug(data_undelta)
