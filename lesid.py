@@ -29,12 +29,17 @@ if __name__ == "__main__":
 
     with open('sismo.cat', 'rb') as sismo:
         # passe la premiere ligne
-        sismo.read(16)
+        head = unpack('iiihh', sismo.read(16))
+        logging.info('numero de station geostar : %s' % head[4])
+
         for i in range(10):
             infos = sismo.read(16)
             time_t, point_dat, decalage, etat_trig, cor_gps, skew, tcxo = unpack('iihhhBB', infos)
-            logging.info("seconde unix : %s" % time_t)
+            # logging.info("seconde unix : %s" % time_t)
             utc_dt = gmtime(time_t)
             utc_dt = strftime('%d %b %Y %H:%M:%S', utc_dt)
             logging.info("temps utc : %s " % utc_dt)
             logging.info("offset dans sismo.dat: %s" % point_dat)
+
+            # with open('decompress.dat', 'rb') as fichier:
+            #     record = fichier.read(point_dat)

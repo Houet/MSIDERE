@@ -12,7 +12,7 @@ import struct
 from struct import pack, unpack
 
 
-def decompression(fichier, iterateur):
+def decompression(fichier, fichierdest, iterateur):
     """ vide """
 
     # on lis la taille du block
@@ -53,7 +53,7 @@ def decompression(fichier, iterateur):
                 data_out = [pack('h', i) for i in data_undelta]
 
                 # print data_out
-                with open("decompress.dat", "ab") as decompress:
+                with open(fichierdest, "ab") as decompress:
                     for i in data_out:
                         decompress.write(i)
 
@@ -69,6 +69,9 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--loglevel", help="change the logging level",
                         default="info",
                         choices=['debug', 'info', 'warning', 'error'])
+    parser.add_argument("-f", "--fichierdest",
+                        help="fichier de destination de la decompression",
+                        default="decompress.dat")
     args = parser.parse_args()
 
     numeric_level = getattr(logging, args.loglevel.upper(), None)
@@ -91,7 +94,7 @@ if __name__ == "__main__":
         # ####################################################################
 
         i = 0
-        while decompression(fichier, i):
+        while decompression(fichier, args.fichierdest, i):
             i += 1
 
 # ###########################  commentaires #################################
