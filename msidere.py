@@ -1,5 +1,8 @@
-# projet Mseedifie
-# partie decompression donnees 
+#!/usr/bin/env python
+# -*- coding=utf-8 -*-
+
+
+###### partie decompression des données
 
 import os
 import logging
@@ -9,51 +12,55 @@ import struct
 from struct import pack, unpack
 
 
-
-def function_logging(loglevel):
-    """ module logging """
-
-    numeric_level = getattr(logging, loglevel.upper(), None)
-    form = '%(levelname)s :: %(asctime)s :: %(message)s'
-    logging.basicConfig(level=numeric_level, format=form)
-    return
-
-def decompression():
+def decompression(fichier, iterateur):
     """ vide """
 
     #on lis la taille du block
-    size_block, = unpack("h", fichier.read(2))
-    logging.info("taille du block: %s octet(s)", size_block)
+    try:
+        size_block, = unpack("h", fichier.read(2))
+    except struct.error:
+        logging.info('fin du fichier, nombre de block : %s', iterateur)
+        return False
+    else:
+        logging.debug("taille du block: %s octet(s)", size_block)
 
-    #on lis les paquets
-    while size_block > 0:
-        s = struct.Struct("5h")
-        nbytes, nech, val0, offset, nbits = s.unpack(fichier.read(10))
-        logging.info("taille du paquet: %s octet(s)", nbytes)
-        logging.info("nombre d'echantillons: %s ", nech)
-        logging.info("codes sur : %s bits", nbits)
+        #on lis les paquets
+        while size_block > 0:
+            s = struct.Struct("5h")
+            nbytes, nech, val0, offset, nbits = s.unpack(fichier.read(10))
+            logging.debug(" --> taille du paquet: %s octet(s)", nbytes)
+            logging.debug(" --> nombre d'echantillons: %s ", nech)
+            logging.debug(" --> premiere valeur: %s ", val0)
+            logging.debug(" --> composante continue: %s ", offset)
+            logging.debug(" --> codes sur : %s bits", nbits)
 
-        #decompression des donnees
-        data = fichier.read(nbytes - 10)
+            #decompression des donnees
+            data = fichier.read(nbytes - 10)
+            # print(hexlify(data))
 
-        if nbits !=0:
-            #donnees en binaire
-            data_binaire = bin(int(hexlify(data),16))[2:]
-            size_data = range(len(data_binaire)/nbits)
+            if nbits !=0:
+                #donnees en binaire
+                data_binaire = bin(int(hexlify(data),16))[2:]
+                size_data = list(range(nech))
 
-            data_undelta = [data_binaire[i*nbits:(i + 1)*nbits] for i in size_data]
-            data_undelta = map(lambda x : int(x,2) - offset, data_undelta)
-            data_undelta.insert(0,val0)
-            
-            #reencodage
-            data_out = [pack('h', i) for i in data_undelta]
-            data_out = ''.join(data_out)
+                data_undelta = [data_binaire[i*nbits:(i + 1)*nbits] for i in size_data]
+                logging.debug(len(data_undelta))
+                data_undelta = [int(x,2) - offset for x in data_undelta]
+                logging.debug(data_undelta)
+                data_undelta.insert(0,val0)
+                
+                #reencodage
+                data_out = [pack('h', i) for i in data_undelta]
 
-            #print data_out
-            with open("decompress.dat", "ab") as decompress:
-                decompress.write(data_out)
 
-        size_block -= nbytes
+                #print data_out
+                with open("decompress.dat", "ab") as decompress:
+                    for i in data_out:
+                        decompress.write(i)
+
+            size_block -= nbytes
+        return True
+
 
 
 if __name__ == "__main__":
@@ -62,11 +69,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="decompression MSIDERE")
 
     parser.add_argument("-l", "--loglevel", help="change the logging level", 
-        default="warning", choices=['debug', 'info', 'warning', 'error'])
+        default="info", choices=['debug', 'info', 'warning', 'error'])
     args = parser.parse_args()
 
-
-    function_logging(args.loglevel)
+    numeric_level = getattr(logging, args.loglevel.upper(), None)
+    form = '%(levelname)s :: %(asctime)s :: %(message)s'
+    logging.basicConfig(level=numeric_level, format=form)
 
 
 
@@ -89,13 +97,11 @@ if __name__ == "__main__":
         #   pass                                                            #
         #####################################################################
 
-        try:
-        	for i in range(100000):
-            	decompression()
-
-        except IOError:
-            pass
-
+    
+        i = 0
+        while decompression(fichier, i):
+            i += 1   
+        
 
 
 ############################  commentaires #################################
@@ -113,3 +119,18 @@ if __name__ == "__main__":
 # on pack ensuite dans le fichier decompress.dat apres avoir 
 # retranche la composante continue et ajoute la premiere valeur val0
 # pour l'instant on ne travaille que sur un seul block 
+
+# edit 1 aout:
+# on essai de lire tous les blocks a l'aide d'un retour en booleen on 
+# arrete quand tous les blocks ont ete lus ie quand false est renvoyé par 
+# la focntion decompression
+
+# edit 4 aout:
+# bug trouvé sur la division qui en fait renvoi un resultat entier (mtnt float)
+# petit probleme au niveau du nombre de bits qu'on doit lire
+# soit 896 soit 928 selon les versions
+# peut etre signal de fin de paquet avec les 8 zeros encodés en fait de paquets
+
+# on prends que 128 premieres valeur et on considere que les derniers zero c'est
+# une sorte de signal de fin
+# et on continue la ou on s'etait arrete
