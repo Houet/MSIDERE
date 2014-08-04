@@ -2,7 +2,7 @@
 # -*- coding=utf-8 -*-
 
 
-###### partie decompression des données
+# ##### partie decompression des données
 
 import os
 import logging
@@ -15,7 +15,7 @@ from struct import pack, unpack
 def decompression(fichier, iterateur):
     """ vide """
 
-    #on lis la taille du block
+    # on lis la taille du block
     try:
         size_block, = unpack("h", fichier.read(2))
     except struct.error:
@@ -24,7 +24,7 @@ def decompression(fichier, iterateur):
     else:
         logging.debug("taille du block: %s octet(s)", size_block)
 
-        #on lis les paquets
+        # on lis les paquets
         while size_block > 0:
             s = struct.Struct("5h")
             nbytes, nech, val0, offset, nbits = s.unpack(fichier.read(10))
@@ -34,26 +34,26 @@ def decompression(fichier, iterateur):
             logging.debug(" --> composante continue: %s ", offset)
             logging.debug(" --> codes sur : %s bits", nbits)
 
-            #decompression des donnees
+            # decompression des donnees
             data = fichier.read(nbytes - 10)
             # print(hexlify(data))
 
-            if nbits !=0:
-                #donnees en binaire
-                data_binaire = bin(int(hexlify(data),16))[2:]
+            if nbits != 0:
+                # donnees en binaire
+                data_binaire = bin(int(hexlify(data), 16))[2:]
                 size_data = list(range(nech))
 
-                data_undelta = [data_binaire[i*nbits:(i + 1)*nbits] for i in size_data]
+                data_undelta = [data_binaire[i * nbits:(i + 1) * nbits]
+                                for i in size_data]
                 logging.debug(len(data_undelta))
-                data_undelta = [int(x,2) - offset for x in data_undelta]
+                data_undelta = [int(x, 2) - offset for x in data_undelta]
                 logging.debug(data_undelta)
-                data_undelta.insert(0,val0)
-                
-                #reencodage
+                data_undelta.insert(0, val0)
+
+                # reencodage
                 data_out = [pack('h', i) for i in data_undelta]
 
-
-                #print data_out
+                # print data_out
                 with open("decompress.dat", "ab") as decompress:
                     for i in data_out:
                         decompress.write(i)
@@ -62,14 +62,14 @@ def decompression(fichier, iterateur):
         return True
 
 
-
 if __name__ == "__main__":
 
     import argparse
     parser = argparse.ArgumentParser(description="decompression MSIDERE")
 
-    parser.add_argument("-l", "--loglevel", help="change the logging level", 
-        default="info", choices=['debug', 'info', 'warning', 'error'])
+    parser.add_argument("-l", "--loglevel", help="change the logging level",
+                        default="info",
+                        choices=['debug', 'info', 'warning', 'error'])
     args = parser.parse_args()
 
     numeric_level = getattr(logging, args.loglevel.upper(), None)
@@ -77,52 +77,43 @@ if __name__ == "__main__":
     logging.basicConfig(level=numeric_level, format=form)
 
 
-
-
-
-
-##########################  demarrage du code  ############################  
-
+# #########################  demarrage du code  ############################
 
     with open("sismo.dat", "rb") as fichier:
 
-
-        ############################## exemple ##############################
+        # ############################# exemple ##############################
         # try:                                                              #
         #   s = struct.Struct(">hhhhhh")                                    #
-        #   record = fichier.read(12)                                       #               
+        #   record = fichier.read(12)                                       #
         #   nblock, nbytes, nech, val0, offset, nbits = s.unpack(record)    #
         #   record = pack(">h", nblock)                                     #
         # except IOError:                                                   #
         #   pass                                                            #
-        #####################################################################
+        # ####################################################################
 
-    
         i = 0
         while decompression(fichier, i):
-            i += 1   
-        
+            i += 1
 
-
-############################  commentaires #################################
+# ###########################  commentaires #################################
 
 
 # pour l'instant on ne lis que le premier paquet pour se simplifier la tache
-# on a aussi reutiliser la meme structure que celle utilise en C precedemment 
+# on a aussi reutiliser la meme structure que celle utilise en C precedemment
 # par mr Frogneux
 
 
-# edit : 
+# edit :
 # on lis tous les paquets du block maintenant, qu'on convertis en binaire
-# pour pouvoir separer les bits lorsque nbits car nbits est souvent pas 
+# pour pouvoir separer les bits lorsque nbits car nbits est souvent pas
 # multiple d'un octet
-# on pack ensuite dans le fichier decompress.dat apres avoir 
+# on pack ensuite dans le fichier decompress.dat apres avoir
 # retranche la composante continue et ajoute la premiere valeur val0
-# pour l'instant on ne travaille que sur un seul block 
+# pour l'instant on ne travaille que sur un seul block
 
 # edit 1 aout:
-# on essai de lire tous les blocks a l'aide d'un retour en booleen on 
-# arrete quand tous les blocks ont ete lus ie quand false est renvoyé par 
+# on essai de lire tous les blocks a l'aide d'un retour en booleen on
+# arrete quand tous les blocks ont ete lus ie quand false est renvoyé par
 # la focntion decompression
 
 # edit 4 aout:
@@ -131,6 +122,6 @@ if __name__ == "__main__":
 # soit 896 soit 928 selon les versions
 # peut etre signal de fin de paquet avec les 8 zeros encodés en fait de paquets
 
-# on prends que 128 premieres valeur et on considere que les derniers zero c'est
-# une sorte de signal de fin
+# on prends que 128 premieres valeur et on considere que les derniers zero
+# c'est une sorte de signal de fin
 # et on continue la ou on s'etait arrete
