@@ -19,10 +19,10 @@ def decompression(fichier, fichierdest, iterateur):
     try:
         size_block, = unpack("h", fichier.read(2))
     except struct.error:
-        logging.info('fin du fichier, nombre de block : %s', iterateur)
+        logging.warning('fin du fichier, nombre de block : %s', iterateur)
         return False
     else:
-        logging.debug("taille du block: %s octet(s)", size_block)
+        logging.info("taille du block: %s octet(s)", size_block)
 
         # on lis les paquets
         while size_block > 0:
@@ -67,11 +67,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="decompression MSIDERE")
 
     parser.add_argument("-l", "--loglevel", help="change the logging level",
-                        default="info",
+                        default="warning",
                         choices=['debug', 'info', 'warning', 'error'])
     parser.add_argument("-f", "--fichierdest",
                         help="fichier de destination de la decompression",
                         default="decompress.dat")
+    parser.add_argument("-b", "--bloc", help="nombre de bloc à décoder")
     args = parser.parse_args()
 
     numeric_level = getattr(logging, args.loglevel.upper(), None)
@@ -94,8 +95,14 @@ if __name__ == "__main__":
         # ####################################################################
 
         i = 0
-        while decompression(fichier, args.fichierdest, i):
-            i += 1
+        if not args.bloc: 
+            while decompression(fichier, args.fichierdest, i):
+                i += 1
+        else:
+            while i < int(args.bloc):
+                decompression(fichier, args.fichierdest, i)
+                logging.debug(fichier.tell())
+                i += 1
 
 # ###########################  commentaires #################################
 
