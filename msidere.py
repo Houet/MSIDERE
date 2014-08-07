@@ -7,58 +7,64 @@
 import os
 import logging
 import binascii
+from matplotlib import pyplot as plt
 from binascii import hexlify, unhexlify
 import struct
 from struct import pack, unpack
 
 
-def decompression(fichier, fichierdest, iterateur):
+def list_bloc(datfile):
+    """ """
+    list_bloc = []
+    while True:
+        try:
+            bloc_begin = datfile.tell()
+            size_block, =  unpack("h", datfile.read(2))
+        except struct.error:
+            break
+        else:
+            list_bloc.append((bloc_begin, size_block))
+            datfile.seek(list_bloc[-1][0] + list_bloc[-1][1] + 2)
+    return list_bloc
+
+
+def decompression(datfile, bloc):
     """ vide """
 
+    datfile.seek(bloc[0])
+    data_out = []
     # on lis la taille du block
-    try:
-        size_block, = unpack("h", fichier.read(2))
-    except struct.error:
-        logging.warning('fin du fichier, nombre de block : %s', iterateur)
-        return False
-    else:
-        logging.info("taille du block: %s octet(s)", size_block)
+    size_block, = unpack("h", datfile.read(2))
+    logging.info("taille du block: %s octet(s)", size_block)
 
-        # on lis les paquets
-        while size_block > 0:
-            s = struct.Struct("5h")
-            nbytes, nech, val0, offset, nbits = s.unpack(fichier.read(10))
-            logging.debug(" --> taille du paquet: %s octet(s)", nbytes)
-            logging.debug(" --> nombre d'echantillons: %s ", nech)
-            logging.debug(" --> premiere valeur: %s ", val0)
-            logging.debug(" --> composante continue: %s ", offset)
-            logging.debug(" --> codes sur : %s bits", nbits)
+    # on lis les paquets
+    while size_block > 0:
+        s = struct.Struct("5h")
+        nbytes, nech, val0, offset, nbits = s.unpack(datfile.read(10))
+        logging.debug(" --> taille du paquet: %s octet(s)", nbytes)
+        logging.debug(" --> nombre d'echantillons: %s ", nech)
+        logging.debug(" --> premiere valeur: %s ", val0)
+        logging.debug(" --> composante continue: %s ", offset)
+        logging.debug(" --> codes sur : %s bits", nbits)
 
-            # decompression des donnees
-            data = fichier.read(nbytes - 10)
-            # print(hexlify(data))
+        # decompression des donnees
+        data = datfile.read(nbytes - 10)
+        # print(hexlify(data))
 
-            if nbits != 0:
-                # donnees en binaire
-                data_binaire = bin(int(hexlify(data), 16))[2:]
+        if nbits != 0:
+            # donnees en binaire
+            data_binaire = bin(int(hexlify(data), 16))[2:]
 
-                data_undelta = [data_binaire[i * nbits:(i + 1) * nbits]
-                                for i in range(nech)]
-                logging.debug(len(data_undelta))
-                data_undelta = [int(x, 2) - offset for x in data_undelta]
-                logging.debug(data_undelta)
-                data_undelta.insert(0, val0)
+            data_undelta = [data_binaire[i * nbits:(i + 1) * nbits]
+                            for i in range(nech)]
+            logging.debug(len(data_undelta))
+            data_undelta = [int(x, 2) - offset for x in data_undelta]
+            logging.debug(data_undelta)
+            data_undelta.insert(0, val0)
 
-                # reencodage
-                data_out = [pack('h', i) for i in data_undelta]
-
-                # print data_out
-                with open(fichierdest, "ab") as decompress:
-                    for i in data_out:
-                        decompress.write(i)
-
-            size_block -= nbytes
-        return True
+        size_block -= nbytes
+        data_out.extend(data_undelta)
+    return data_out
 
 
 if __name__ == "__main__":
@@ -69,10 +75,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--loglevel", help="change the logging level",
                         default="warning",
                         choices=['debug', 'info', 'warning', 'error'])
-    parser.add_argument("-f", "--fichierdest",
-                        help="fichier de destination de la decompression",
-                        default="decompress.dat")
-    parser.add_argument("-b", "--bloc", help="nombre de bloc à décoder")
+    parser.add_argument("bloc", help="bloc à décoder")
     args = parser.parse_args()
 
     numeric_level = getattr(logging, args.loglevel.upper(), None)
@@ -80,29 +83,16 @@ if __name__ == "__main__":
     logging.basicConfig(level=numeric_level, format=form)
 
 
-# #########################  demarrage du code  ############################
-
     with open("sismo.dat", "rb") as fichier:
 
-        # ############################# exemple ##############################
-        # try:                                                              #
-        #   s = struct.Struct(">hhhhhh")                                    #
-        #   record = fichier.read(12)                                       #
-        #   nblock, nbytes, nech, val0, offset, nbits = s.unpack(record)    #
-        #   record = pack(">h", nblock)                                     #
-        # except IOError:                                                   #
-        #   pass                                                            #
-        # ####################################################################
+        liste_des_bloc = list_bloc(fichier)
+        deconfit = decompression(fichier, liste_des_bloc[int(args.bloc)])
+        logging.info(len(deconfit))
 
-        i = 0
-        if not args.bloc: 
-            while decompression(fichier, args.fichierdest, i):
-                i += 1
-        else:
-            while i < int(args.bloc):
-                decompression(fichier, args.fichierdest, i)
-                logging.debug(fichier.tell())
-                i += 1
+    plt.plot(deconfit)
+    plt.show()
+
+
 
 # ###########################  commentaires #################################
 
