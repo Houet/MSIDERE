@@ -12,6 +12,7 @@ import struct
 from struct import pack, unpack
 from time import gmtime, strftime
 import numpy as np
+from matplotlib import pyplot as plt
 from obspy.core import read, Trace, Stream, UTCDateTime
 
 def list_bloc(datfile):
@@ -76,6 +77,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--loglevel", help="change the logging level",
                         default="info",
                         choices=['debug', 'info', 'warning', 'error'])
+    parser.add_argument("bloc", help="nombre de minutes à décoder", type=int)
     args = parser.parse_args()
 
     numeric_level = getattr(logging, args.loglevel.upper(), None)
@@ -87,39 +89,42 @@ if __name__ == "__main__":
         head = unpack('iiihh', sismo.read(16))
         logging.info('numero de station geostar : %s' % head[4])
 
+        for i in range(args.bloc):
+            infos = sismo.read(16)
+            time_t, point_dat, decalage, etat_trig, cor_gps, skew, tcxo = unpack('iihhhBB', infos)
+            utc_dt = gmtime(time_t)
+            utc_dt = strftime('%d %b %Y %H:%M:%S', utc_dt)
+            logging.info("temps utc : %s " % utc_dt)
+            logging.info("offset dans sismo.dat: %s" % point_dat)
+
+            with open("sismo.dat", "rb") as fichier:
+
+                liste_des_bloc = list_bloc(fichier)
+                deconfit = decompression(fichier, point_dat)
+
+            deconfit = map(float, deconfit)
+            # Convert to NumPy character array
+            data = np.ndarray((len(deconfit),), buffer=np.array(deconfit), dtype=float)
+
+            # Fill header attributes
+            stats = {'network': '70', 'station': 'GEO1', 'location': '',
+                     'channel': '70Z', 'npts': len(data), 'sampling_rate': 75,
+                     'mseed': {'dataquality': 'D'}}
+            # set current time
+            stats['starttime'] = UTCDateTime(time_t)
+            st = Stream([Trace(data=data, header=stats)])
+            st.plot(outfile='graphe%s.png' %i)
+            
+
+            logging.debug(st[0].stats)
+            # write as INT16 file (encoding=0)
+            st.write("sismo%s.mseed" %i, format='MSEED')
+
+            # Show that it worked, convert NumPy character array back to string
         
-        infos = sismo.read(16)
-        time_t, point_dat, decalage, etat_trig, cor_gps, skew, tcxo = unpack('iihhhBB', infos)
-        # logging.info("seconde unix : %s" % time_t)
-        utc_dt = gmtime(time_t)
-        utc_dt = strftime('%d %b %Y %H:%M:%S', utc_dt)
-        logging.info("temps utc : %s " % utc_dt)
-        logging.info("offset dans sismo.dat: %s" % point_dat)
+    os.system('find *mseed* -exec cat {} \; > sismoh.mseed')
 
-        with open("sismo.dat", "rb") as fichier:
+    with open('sismoh.mseed', 'rb') as sismo:
+        st = read(sismo)
+        st.plot(outfile='grapheh.png')
 
-            liste_des_bloc = list_bloc(fichier)
-            deconfit = decompression(fichier, point_dat)
-        
-
-
-        deconfit = map(float, deconfit)
-        # Convert to NumPy character array
-        data = np.ndarray((len(deconfit),), buffer=np.array(deconfit), dtype=float)
-
-        # Fill header attributes
-        stats = {'network': '70', 'station': 'GEO1', 'location': '',
-                 'channel': '70Z', 'npts': len(data), 'sampling_rate': 150,
-                 'mseed': {'dataquality': 'D'}}
-        # set current time
-        stats['starttime'] = UTCDateTime(time_t)
-        st = Stream([Trace(data=data, header=stats)])
-        
-
-        logging.info(st[0].stats)
-        # write as INT16 file (encoding=0)
-        st.write("sismo.mseed", format='MSEED')
-
-        # Show that it worked, convert NumPy character array back to string
-        
-        
