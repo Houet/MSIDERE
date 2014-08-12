@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding=utf-8 -*-
 
-
 # ##### partie lecture du fichier sismo.cat
 
 import os
@@ -15,8 +14,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from obspy.core import read, Trace, Stream, UTCDateTime
 
+
 def list_bloc(datfile):
-    """ """
+    """ return the list of bloc include in datfile """
     list_bloc = []
     while True:
         try:
@@ -25,13 +25,13 @@ def list_bloc(datfile):
         except struct.error:
             break
         else:
-            list_bloc.append((bloc_begin, size_block))
-            datfile.seek(list_bloc[-1][0] + list_bloc[-1][1] + 2)
+            list_bloc.append(bloc_begin)
+            datfile.seek(list_bloc[-1] + size_block + 2)
     return list_bloc
 
 
 def decompression(datfile, offset_bloc):
-    """ vide """
+    """ return a list of decompressed bloc data """
 
     datfile.seek(offset_bloc)
     data_out = []
@@ -50,23 +50,48 @@ def decompression(datfile, offset_bloc):
         logging.debug(" --> codes sur : %s bits", nbits)
 
         # decompression des donnees
-        data = datfile.read(nbytes - 10)
+        data = datfile.read(nech/8 * nbits)
+        datfile.read(nbytes - 10 - nech/8 * nbits)
         # print(hexlify(data))
 
         if nbits != 0:
             # donnees en binaire
-            data_binaire = bin(int(hexlify(data), 16))[2:]
+            data_binaire = bin(int(hexlify(data), 16))[2:].rjust(nech * nbits,'0')
+            logging.debug(len(data_binaire))
 
             data_undelta = [data_binaire[i * nbits:(i + 1) * nbits]
                             for i in range(nech)]
             logging.debug(len(data_undelta))
-            data_undelta = [int(x, 2) - offset for x in data_undelta]
+            try:
+                data_undelta = [int(x, 2) - offset for x in data_undelta]
+            except ValueError:
+                logging.debug("erreur lors de la décompression")
+                data_undelta = []
             logging.debug(data_undelta)
             data_undelta.insert(0, val0)
+            data_out.extend(data_undelta)
 
         size_block -= nbytes
-        data_out.extend(data_undelta)
     return data_out
+
+
+def dump_to_mseed(data, channel, startime):
+    """ dump data to format MiniSEED """
+    data = map(float, data)
+    # Convert to NumPy character array
+    data = np.ndarray((len(data),), buffer=np.array(data), dtype=float)
+
+    # Fill header attributes
+    stats = {'network': '70', 'station': 'GEO1', 'location': '',
+             'channel': '70%s' % channel, 'npts': len(data),
+             'sampling_rate': 150, 'mseed': {'dataquality': 'D'}}
+    # set current time
+    stats['starttime'] = UTCDateTime(startime)
+    st = Stream([Trace(data=data, header=stats)])
+    # st.plot(outfile='graphe%s%s.png' % (channel, stats["starttime"]))
+
+    logging.debug(st[0].stats)
+    st.write("sismo%s%s.mseed" % (channel, stats["starttime"]), format='MSEED')
 
 
 if __name__ == "__main__":
@@ -74,57 +99,64 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="lecture de sismo.cat")
 
+    parser.add_argument("filecat", help="fichier sismo.cat")
+    parser.add_argument("filedat", help="fichier sismo.dat")
+    parser.add_argument("bloc", help="nombre de minutes à décoder", type=int)
+
     parser.add_argument("-l", "--loglevel", help="change the logging level",
                         default="info",
                         choices=['debug', 'info', 'warning', 'error'])
-    parser.add_argument("bloc", help="nombre de minutes à décoder", type=int)
     args = parser.parse_args()
 
     numeric_level = getattr(logging, args.loglevel.upper(), None)
     form = '%(levelname)s :: %(asctime)s :: %(message)s'
     logging.basicConfig(level=numeric_level, format=form)
 
-    with open('sismo.cat', 'rb') as sismo:
+    with open(args.filecat, 'rb') as sismo:
         # passe la premiere ligne
         head = unpack('iiihh', sismo.read(16))
         logging.info('numero de station geostar : %s' % head[4])
+        logging.info('code cadence échantillonage : %s' % head[3])
+        # logging.warning('head {!r}'.format(head))
 
-        for i in range(args.bloc):
+        liste_offset = []
+        for i in range(max(2, args.bloc)):
             infos = sismo.read(16)
             time_t, point_dat, decalage, etat_trig, cor_gps, skew, tcxo = unpack('iihhhBB', infos)
             utc_dt = gmtime(time_t)
             utc_dt = strftime('%d %b %Y %H:%M:%S', utc_dt)
             logging.info("temps utc : %s " % utc_dt)
             logging.info("offset dans sismo.dat: %s" % point_dat)
+            logging.info("correction horloge : %s" % cor_gps)
+            # logging.warning("infos : {!r} ".format((time_t, point_dat, decalage, etat_trig, cor_gps, skew, tcxo)))
+            liste_offset.append((point_dat, time_t))
 
-            with open("sismo.dat", "rb") as fichier:
+    with open(args.filedat, "rb") as fichier:
 
-                liste_des_bloc = list_bloc(fichier)
-                deconfit = decompression(fichier, point_dat)
+        liste_des_bloc = list_bloc(fichier)
+        nb_channel = liste_des_bloc.index(liste_offset[1][0])
 
-            deconfit = map(float, deconfit)
-            # Convert to NumPy character array
-            data = np.ndarray((len(deconfit),), buffer=np.array(deconfit), dtype=float)
+        dict_channel = {0: 'Z',
+                        1: 'N',
+                        2: 'E',
+                        3: '-',
+                        }
+        for j in range(args.bloc):
+            for i in range(nb_channel):
 
-            # Fill header attributes
-            stats = {'network': '70', 'station': 'GEO1', 'location': '',
-                     'channel': '70Z', 'npts': len(data), 'sampling_rate': 75,
-                     'mseed': {'dataquality': 'D'}}
-            # set current time
-            stats['starttime'] = UTCDateTime(time_t)
-            st = Stream([Trace(data=data, header=stats)])
-            st.plot(outfile='graphe%s.png' %i)
-            
+                deconfit = decompression(fichier, liste_des_bloc[j * nb_channel + i])
+                if deconfit != []:
+                    if i <= 3:
+                        dump_to_mseed(deconfit, dict_channel[i], liste_offset[j][1])
+                    else:
+                        dump_to_mseed(deconfit, '**%s' % i, liste_offset[j][1])
+                else:
+                    logging.info(" --> pas de données pour ce bloc")
 
-            logging.debug(st[0].stats)
-            # write as INT16 file (encoding=0)
-            st.write("sismo%s.mseed" %i, format='MSEED')
+    # os.system('find *mseed* -exec cat {} \; > sismoh.mseed')
 
-            # Show that it worked, convert NumPy character array back to string
-        
-    os.system('find *mseed* -exec cat {} \; > sismoh.mseed')
-
-    with open('sismoh.mseed', 'rb') as sismo:
-        st = read(sismo)
-        st.plot(outfile='grapheh.png')
-
+    # with open('sismoh.mseed', 'rb') as sismo:
+    #     st = read(sismo)
+    #     st.plot(outfile='grapheh.png')
+    #     st.printGaps()
+    #     st.getGaps()
