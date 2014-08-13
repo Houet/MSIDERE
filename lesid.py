@@ -56,7 +56,7 @@ def decompression(datfile, offset_bloc):
 
         if nbits != 0:
             # donnees en binaire
-            data_binaire = bin(int(hexlify(data), 16))[2:].rjust(nech * nbits,'0')
+            data_binaire = bin(int(hexlify(data), 16))[2:].rjust(nech * nbits, '0')
             logging.debug(len(data_binaire))
 
             data_undelta = [data_binaire[i * nbits:(i + 1) * nbits]
@@ -128,7 +128,8 @@ if __name__ == "__main__":
             logging.info("temps utc : %s " % utc_dt)
             logging.info("offset dans sismo.dat: %s" % point_dat)
             logging.info("correction horloge : %s" % cor_gps)
-            # logging.warning("infos : {!r} ".format((time_t, point_dat, decalage, etat_trig, cor_gps, skew, tcxo)))
+            # logging.warning("infos : {!r} ".format((time_t, point_dat,
+            # decalage, etat_trig, cor_gps, skew, tcxo)))
             liste_offset.append((point_dat, time_t))
 
     with open(args.filedat, "rb") as fichier:
@@ -144,10 +145,12 @@ if __name__ == "__main__":
         for j in range(args.bloc):
             for i in range(nb_channel):
 
-                deconfit = decompression(fichier, liste_des_bloc[j * nb_channel + i])
+                deconfit = decompression(fichier,
+                                         liste_des_bloc[j * nb_channel + i])
                 if deconfit != []:
                     if i <= 3:
-                        dump_to_mseed(deconfit, dict_channel[i], liste_offset[j][1])
+                        dump_to_mseed(deconfit, dict_channel[i],
+                                      liste_offset[j][1])
                     else:
                         dump_to_mseed(deconfit, '**%s' % i, liste_offset[j][1])
                 else:

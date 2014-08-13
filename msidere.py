@@ -71,7 +71,7 @@ def decompression(datfile, bloc):
             else:
                 logging.debug(data_undelta)
                 if min(data_undelta) != (- offset):
-                    logging.warning('valeur minimum:%s' %min(data_undelta))
+                    logging.warning('valeur minimum:%s' % min(data_undelta))
                     logging.info(data_undelta)
                 data_undelta.insert(0, val0)
 
