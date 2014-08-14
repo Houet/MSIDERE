@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding=utf-8 -*-
 
-
 # ##### partie decompression des données
 
 import os
@@ -54,11 +53,11 @@ def decompression(datfile, bloc):
 
         if nbits != 0:
             # donnees en binaire
-            data_binaire = bin(int(hexlify(data), 16))[2:].rjust(nech * nbits,'0')
-            
+            data_binaire = bin(int(hexlify(data),
+                               16))[2:].rjust(nech * nbits, '0')
+
             logging.debug("data binaire %s" % data_binaire)
             logging.debug(" len data_binaire %s" % len(data_binaire))
-
 
             data_undelta = [data_binaire[i * nbits:(i + 1) * nbits]
                             for i in range(nech)]
@@ -101,36 +100,3 @@ if __name__ == "__main__":
         liste_des_bloc = list_bloc(fichier)
         deconfit = decompression(fichier, liste_des_bloc[int(args.bloc)])
         logging.debug("taille data décompressée %s" % len(deconfit))
-
-
-
-# ###########################  commentaires #################################
-
-
-# pour l'instant on ne lis que le premier paquet pour se simplifier la tache
-# on a aussi reutiliser la meme structure que celle utilise en C precedemment
-# par mr Frogneux
-
-
-# edit :
-# on lis tous les paquets du block maintenant, qu'on convertis en binaire
-# pour pouvoir separer les bits lorsque nbits car nbits est souvent pas
-# multiple d'un octet
-# on pack ensuite dans le fichier decompress.dat apres avoir
-# retranche la composante continue et ajoute la premiere valeur val0
-# pour l'instant on ne travaille que sur un seul block
-
-# edit 1 aout:
-# on essai de lire tous les blocks a l'aide d'un retour en booleen on
-# arrete quand tous les blocks ont ete lus ie quand false est renvoyé par
-# la focntion decompression
-
-# edit 4 aout:
-# bug trouvé sur la division qui en fait renvoi un resultat entier (mtnt float)
-# petit probleme au niveau du nombre de bits qu'on doit lire
-# soit 896 soit 928 selon les versions
-# peut etre signal de fin de paquet avec les 8 zeros encodés en fait de paquets
-
-# on prends que 128 premieres valeur et on considere que les derniers zero
-# c'est une sorte de signal de fin
-# et on continue la ou on s'etait arrete

@@ -56,7 +56,8 @@ def decompression(datfile, offset_bloc):
 
         if nbits != 0:
             # donnees en binaire
-            data_binaire = bin(int(hexlify(data), 16))[2:].rjust(nech * nbits, '0')
+            data_binaire = bin(int(hexlify(data),
+                               16))[2:].rjust(nech * nbits, '0')
             logging.debug(len(data_binaire))
 
             data_undelta = [data_binaire[i * nbits:(i + 1) * nbits]
@@ -155,11 +156,3 @@ if __name__ == "__main__":
                         dump_to_mseed(deconfit, '**%s' % i, liste_offset[j][1])
                 else:
                     logging.info(" --> pas de données pour ce bloc")
-
-    # os.system('find *mseed* -exec cat {} \; > sismoh.mseed')
-
-    # with open('sismoh.mseed', 'rb') as sismo:
-    #     st = read(sismo)
-    #     st.plot(outfile='grapheh.png')
-    #     st.printGaps()
-    #     st.getGaps()
